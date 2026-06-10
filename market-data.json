@@ -1,0 +1,8 @@
+{
+  "updated_at": "初始化",
+  "speech": "市場數據尚未更新，請等待明日早上 08:45 自動更新。",
+  "sgx_taiwan": {"price": 0, "prev": 0, "chg_pct": 0},
+  "gold":        {"price": 0, "chg_pct": 0},
+  "oil":         {"price": 0, "chg_pct": 0},
+  "vix":         {"price": 0, "chg_pct": 0}
+}
