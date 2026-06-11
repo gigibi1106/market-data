@@ -1,8 +1,21 @@
 {
-  "updated_at": "初始化",
-  "speech": "市場數據尚未更新，請等待明日早上 08:45 自動更新。",
-  "sgx_taiwan": {"price": 0, "prev": 0, "chg_pct": 0},
-  "gold":        {"price": 0, "chg_pct": 0},
-  "oil":         {"price": 0, "chg_pct": 0},
-  "vix":         {"price": 0, "chg_pct": 0}
+  "updated_at": "2026-06-11 13:13 TW",
+  "speech": "早安，今天是6月11日，盤前市場快報。 新加坡富台指數 0 點，持平。 黃金每盎司 4097 美元，下跌 0.88%。 WTI 原油每桶 91.1 美元，上漲 1.22%。 VIX 恐慌指數 22.2，上漲 17.44%，目前正常。 以上是今日盤前快報，祝交易順利。",
+  "sgx_taiwan": {
+    "price": 0.0,
+    "prev": 0.0,
+    "chg_pct": 0.0
+  },
+  "gold": {
+    "price": 4096.9,
+    "chg_pct": -0.88
+  },
+  "oil": {
+    "price": 91.13,
+    "chg_pct": 1.22
+  },
+  "vix": {
+    "price": 22.22,
+    "chg_pct": 17.44
+  }
 }
