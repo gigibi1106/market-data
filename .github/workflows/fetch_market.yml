@@ -22,11 +22,11 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-        run: |
-          pip install requests playwright playwright-stealth
-          playwright install chromium
+        run: pip install requests
 
       - name: Fetch market data
+        env:
+          FIRECRAWL_API_KEY: ${{ secrets.FIRECRAWL_API_KEY }}
         run: python fetch_market.py
 
       - name: Commit and push

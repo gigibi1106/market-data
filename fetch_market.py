@@ -9,48 +9,36 @@ import re
 import os
 from datetime import datetime, timezone, timedelta
 
+FIRECRAWL_API_KEY = os.environ['FIRECRAWL_API_KEY']
 TW_TZ = timezone(timedelta(hours=8))
 
 
 def get_sgx_taiwan():
-    """從玩股網抓取富台指數（Playwright stealth 繞過 bot 偵測）"""
+    """用 Firecrawl stealth 抓玩股網富台指數"""
     try:
-        from playwright.sync_api import sync_playwright
-        from playwright_stealth import Stealth
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=['--no-sandbox', '--disable-dev-shm-usage', '--disable-blink-features=AutomationControlled']
-            )
-            ctx = browser.new_context(
-                user_agent='Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                viewport={'width': 1280, 'height': 800}
-            )
-            Stealth().apply_stealth_sync(ctx)
-            page = ctx.new_page()
-            page.goto('https://www.wantgoo.com/global/stwn&', wait_until='domcontentloaded', timeout=30000)
-            page.wait_for_timeout(8000)
+        r = requests.post(
+            'https://api.firecrawl.dev/v1/scrape',
+            headers={'Authorization': f'Bearer {FIRECRAWL_API_KEY}'},
+            json={
+                'url': 'https://www.wantgoo.com/global/stwn&',
+                'formats': ['json'],
+                'jsonOptions': {
+                    'prompt': '從頁面提取富台指數(STWN)的最新價格(price)、昨收(prev_close)、漲跌幅百分比(change_pct，正數為漲、負數為跌)。回傳 JSON。'
+                },
+                'proxy': 'stealth',
+                'waitFor': 8000
+            },
+            timeout=90
+        )
+        data = r.json().get('data', {}).get('json', {})
+        price   = float(data.get('price') or 0)
+        prev    = float(data.get('prev_close') or data.get('previousClose') or 0)
+        chg_pct = float(data.get('change_pct') or data.get('changePercent') or 0)
 
-            og       = page.evaluate("document.querySelector('meta[property=\"og:description\"]')?.content || ''")
-            prev_el  = page.query_selector('[c-model="previousClose"]')
-            prev_text = prev_el.text_content().strip() if prev_el else ''
-            browser.close()
+        if chg_pct == 0 and prev and abs(price - prev) > 0.01:
+            chg_pct = round((price - prev) / prev * 100, 2)
 
-        # og:description 格式: 最新價格3874.75漲跌幅3.34%
-        m_price = re.search(r'最新價格([\d,\.]+)', og)
-        m_pct   = re.search(r'漲跌幅([\d\.]+)%', og)
-        if not m_price:
-            print("SGX Taiwan: 無法從 og:description 解析價格")
-            return {'price': 0, 'prev': 0, 'chg_pct': 0}
-
-        price   = float(m_price.group(1).replace(',', ''))
-        prev    = float(prev_text.replace(',', '')) if prev_text else 0
-        chg_pct = float(m_pct.group(1)) if m_pct else (round((price - prev) / prev * 100, 2) if prev else 0)
-
-        if price and prev and price < prev:
-            chg_pct = -abs(chg_pct)
-
-        print(f"SGX Taiwan (wantgoo): price={price}, prev={prev}, pct={chg_pct}%")
+        print(f"SGX Taiwan (firecrawl/wantgoo): price={price}, prev={prev}, pct={chg_pct}%")
         return {'price': price, 'prev': prev, 'chg_pct': chg_pct}
     except Exception as e:
         print(f"SGX Taiwan error: {e}")
