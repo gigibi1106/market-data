@@ -61,10 +61,39 @@ def get_sgx_taiwan():
         return None
 
 
-def get_yahoo(ticker):
-    """從 Yahoo Finance v8 API 取得價格與漲跌幅。失敗回 None。
+def get_cnbc(symbol):
+    """從 CNBC 報價 API 取得價格與漲跌幅（免金鑰）。失敗回 None。"""
+    try:
+        r = requests.get(
+            'https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol',
+            params={'symbols': symbol, 'requestMethod': 'itv', 'noform': '1',
+                    'partnerId': '2', 'fund': '1', 'exthrs': '1',
+                    'output': 'json', 'events': '1'},
+            headers={'User-Agent': UA}, timeout=20)
+        r.raise_for_status()
+        q = r.json()['FormattedQuoteResult']['FormattedQuote'][0]
+        if q.get('code') != 0:
+            print(f"CNBC {symbol}: 查無此代碼")
+            return None
 
-    Yahoo 常對單一 host 回 429，所以 query1/query2 輪流各試一次。
+        price = float(str(q['last']).replace(',', ''))
+        pct   = float(str(q.get('change_pct', '0')).replace('%', '').replace('+', '') or 0)
+        if price <= 0:
+            print(f"CNBC {symbol}: 價格為 0，視為抓取失敗")
+            return None
+
+        result = {'price': round(price, 2), 'chg_pct': round(pct, 2)}
+        print(f"CNBC {symbol}: {result} 報價時間={q.get('last_timedate')}")
+        return result
+    except Exception as e:
+        print(f"CNBC {symbol} error: {e}")
+        return None
+
+
+def get_yahoo(ticker):
+    """Yahoo Finance v8 API 備援。失敗回 None。
+
+    Yahoo 近期常對雲端 IP 直接回 429，所以只當第二順位，query1/query2 各試一次。
     """
     for host in ('query1', 'query2'):
         try:
@@ -88,6 +117,11 @@ def get_yahoo(ticker):
     return None
 
 
+def get_quote(cnbc_symbol, yahoo_ticker):
+    """CNBC 為主、Yahoo 為備援"""
+    return get_cnbc(cnbc_symbol) or get_yahoo(yahoo_ticker)
+
+
 def direction(pct):
     if pct > 0.05:
         return f'上漲 {abs(pct):.2f}%'
@@ -99,9 +133,9 @@ def direction(pct):
 
 def main():
     sgx  = get_sgx_taiwan()
-    gold = get_yahoo('GC=F')
-    oil  = get_yahoo('CL=F')
-    vix  = get_yahoo('%5EVIX')
+    gold = get_quote('@GC.1', 'GC=F')    # COMEX 黃金期貨
+    oil  = get_quote('@CL.1', 'CL=F')    # WTI 原油期貨
+    vix  = get_quote('.VIX', '%5EVIX')   # CBOE 波動率指數
 
     now_tw = datetime.now(TW_TZ)
     today  = now_tw.strftime('%-m月%-d日')
